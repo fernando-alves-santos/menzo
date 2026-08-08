@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../lib/supabaseClient";
 import {
@@ -11,7 +11,14 @@ import {
   formatarMoeda,
   NOMES_MESES,
   slugify,
+  valorLinha,
 } from "../../lib/contas";
+
+// Quantos anos pra tras/pra frente aparecem no seletor rapido de ano do
+// dashboard (alem do ano atual). Ajuste aqui se precisar de um intervalo
+// maior no futuro.
+const ANOS_PARA_TRAS = 6;
+const ANOS_PARA_FRENTE = 6;
 
 // Nome usado no rodízio (ordem_rotativo) que representa você, o titular.
 // Nos meses em que o responsável calculado for diferente desse nome, o
@@ -247,11 +254,32 @@ function GraficoCategorias({ dados }) {
   );
 }
 
+// A pagina le mes/ano da URL (?mes=7&ano=2029) pra permitir link direto
+// vindo do calendario ou de qualquer outro lugar. useSearchParams exige um
+// Suspense boundary no Next, por isso o export default abaixo so' faz o
+// wrapping e quem tem a logica de verdade e' o DashboardConteudo.
 export default function Dashboard() {
+  return (
+    <Suspense fallback={<main className="max-w-2xl mx-auto px-4 py-8"><p className="text-ink-soft text-sm">Carregando...</p></main>}>
+      <DashboardConteudo />
+    </Suspense>
+  );
+}
+
+function DashboardConteudo() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const hoje = new Date();
-  const [mes, setMes] = useState(hoje.getMonth() + 1);
-  const [ano, setAno] = useState(hoje.getFullYear());
+  const mesUrl = Number(searchParams.get("mes"));
+  const anoUrl = Number(searchParams.get("ano"));
+  const [mes, setMes] = useState(
+    mesUrl >= 1 && mesUrl <= 12 ? mesUrl : hoje.getMonth() + 1
+  );
+  const [ano, setAno] = useState(anoUrl >= 2000 ? anoUrl : hoje.getFullYear());
+  // Valores editados na tela antes de marcar como pago (ex: valor com
+  // desconto por pagamento antecipado). Chave = conta.id, valor = string
+  // digitada pelo usuario. E' reiniciado sempre que troca de mes/ano.
+  const [valoresEditados, setValoresEditados] = useState({});
   const [contas, setContas] = useState([]);
   const [pagamentos, setPagamentos] = useState([]);
   const [parcelasPagas, setParcelasPagas] = useState({});
@@ -400,16 +428,35 @@ export default function Dashboard() {
     carregarDados();
   }, [carregarDados]);
 
+  // Sempre que muda de mes/ano, limpa os valores editados na tela (senao
+  // um valor digitado num mes vazaria visualmente pro mes seguinte) e
+  // mantem a URL sincronizada (?mes=&ano=), pra dar pra linkar direto pra
+  // um mes/ano especifico (ex: a partir do calendario) e pra sobreviver a
+  // um F5 na pagina.
+  useEffect(() => {
+    setValoresEditados({});
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.set("mes", String(mes));
+    params.set("ano", String(ano));
+    router.replace(`/dashboard?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mes, ano]);
+
   async function marcarComoPago(conta) {
     const existente = pagamentos.find((p) => p.conta_id === conta.id);
     const responsavelCalculado = calcularResponsavelRotativo(conta, mes, ano);
+    const valorEditado = valoresEditados[conta.id];
+    const valorAPagar =
+      valorEditado !== undefined && valorEditado !== ""
+        ? Number(String(valorEditado).replace(",", "."))
+        : conta.valor_esperado;
 
     const payload = {
       conta_id: conta.id,
       mes,
       ano,
       status: "pago",
-      valor_pago: conta.valor_esperado,
+      valor_pago: valorAPagar,
       data_pagamento: new Date().toISOString().slice(0, 10),
       ...(responsavelCalculado ? { responsavel: responsavelCalculado } : {}),
     };
@@ -419,6 +466,28 @@ export default function Dashboard() {
     } else {
       await supabase.from("pagamentos").insert(payload);
     }
+    carregarDados();
+  }
+
+  // Corrige/atualiza o valor de uma parcela ja marcada como paga (ex:
+  // percebeu que anotou o valor errado do desconto depois de ja ter
+  // marcado como pago). Nao mexe em status nem data, so' no valor_pago.
+  async function salvarValorPago(conta, pagamento) {
+    const valorEditado = valoresEditados[conta.id];
+    if (valorEditado === undefined || valorEditado === "") return;
+    const novoValor = Number(String(valorEditado).replace(",", "."));
+    if (Number.isNaN(novoValor)) return;
+
+    await supabase
+      .from("pagamentos")
+      .update({ valor_pago: novoValor })
+      .eq("id", pagamento.id);
+
+    setValoresEditados((v) => {
+      const copia = { ...v };
+      delete copia[conta.id];
+      return copia;
+    });
     carregarDados();
   }
 
@@ -732,8 +801,8 @@ export default function Dashboard() {
   );
 
   const total =
-    linhasFixasRotativas.reduce((soma, l) => soma + Number(l.conta.valor_esperado ?? 0), 0) +
-    linhasVariaveisDoMes.reduce((soma, l) => soma + Number(l.conta.valor_esperado ?? 0), 0) +
+    linhasFixasRotativas.reduce((soma, l) => soma + valorLinha(l), 0) +
+    linhasVariaveisDoMes.reduce((soma, l) => soma + valorLinha(l), 0) +
     totalGastosCartao -
     totalReembolsosManuais -
     totalReembolsosRotativos;
@@ -817,7 +886,7 @@ export default function Dashboard() {
   linhasVisiveis.forEach((l) => {
     adicionarItem(l.conta.categoria, {
       nome: l.conta.nome,
-      valor: Number(l.conta.valor_esperado ?? 0),
+      valor: valorLinha(l),
       subtitulo:
         l.conta.tipo === "variavel"
           ? "Gasto variável"
@@ -919,6 +988,27 @@ export default function Dashboard() {
     setAno(novoAno);
   }
 
+  function mudarAno(delta) {
+    setAno(ano + delta);
+  }
+
+  function irParaHoje() {
+    setMes(hoje.getMonth() + 1);
+    setAno(hoje.getFullYear());
+  }
+
+  // Anos disponiveis no seletor rapido: um intervalo fixo em torno do ano
+  // atual, sempre incluindo o ano que estiver selecionado no momento (caso
+  // o usuario tenha chegado num ano fora do intervalo padrao via link).
+  const anosDisponiveis = (() => {
+    const base = new Set();
+    for (let a = hoje.getFullYear() - ANOS_PARA_TRAS; a <= hoje.getFullYear() + ANOS_PARA_FRENTE; a++) {
+      base.add(a);
+    }
+    base.add(ano);
+    return Array.from(base).sort((a, b) => a - b);
+  })();
+
   const grupoRotativas = linhasVisiveis.filter((l) => l.conta.rotativo);
   const grupoFixas = linhasVisiveis.filter((l) => !l.conta.rotativo && l.conta.tipo !== "variavel");
 
@@ -972,7 +1062,46 @@ export default function Dashboard() {
 
         <div className="flex items-center justify-between gap-3 sm:justify-end sm:gap-4 shrink-0">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">{formatarMoeda(conta.valor_esperado)}</p>
+            {status === "pago" ? (
+              // Ja pago: mostra o valor real que foi pago (pode ter desconto
+              // por pagamento antecipado). Continua editavel pra corrigir
+              // caso tenha marcado como pago com o valor errado.
+              <input
+                type="text"
+                inputMode="decimal"
+                title="Valor efetivamente pago"
+                value={
+                  valoresEditados[conta.id] !== undefined
+                    ? valoresEditados[conta.id]
+                    : String(pagamento?.valor_pago ?? conta.valor_esperado ?? "").replace(".", ",")
+                }
+                onChange={(e) =>
+                  setValoresEditados((v) => ({ ...v, [conta.id]: e.target.value }))
+                }
+                onBlur={() => salvarValorPago(conta, pagamento)}
+                className="w-24 text-sm font-medium text-right bg-transparent border-b border-dashed border-border focus:border-ledger outline-none"
+              />
+            ) : (
+              // Ainda nao pago: mostra/edita o valor esperado (base de
+              // calculo, ex: mensalidade cheia sem desconto). O valor
+              // digitado aqui e' o que sera' gravado quando clicar em
+              // "Marcar pago" - nao altera o valor esperado cadastrado na
+              // conta, so' vale pra essa parcela.
+              <input
+                type="text"
+                inputMode="decimal"
+                title="Valor a pagar (editavel, ex: com desconto de adiantamento)"
+                value={
+                  valoresEditados[conta.id] !== undefined
+                    ? valoresEditados[conta.id]
+                    : String(conta.valor_esperado ?? "").replace(".", ",")
+                }
+                onChange={(e) =>
+                  setValoresEditados((v) => ({ ...v, [conta.id]: e.target.value }))
+                }
+                className="w-24 text-sm font-medium text-right bg-transparent border-b border-dashed border-border focus:border-ledger outline-none"
+              />
+            )}
             <span className={`stamp ${STATUS_CLASSES[status]}`}>
               {STATUS_LABEL[status]}
             </span>
@@ -1061,7 +1190,7 @@ export default function Dashboard() {
     if (itens.length === 0) return null;
 
     const aberto = gruposAbertos[chave];
-    const totalGrupo = itens.reduce((soma, l) => soma + Number(l.conta.valor_esperado ?? 0), 0);
+    const totalGrupo = itens.reduce((soma, l) => soma + valorLinha(l), 0);
     const pagas = itens.filter((l) => l.status === "pago").length;
     const vencidas = itens.filter((l) => l.status === "vencido").length;
     const pendentes = itens.length - pagas;
@@ -1163,15 +1292,51 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className="flex items-center justify-center gap-4 mb-6">
-        <button onClick={() => mudarMes(-1)} aria-label="Mes anterior" className="px-2 text-ink-soft">
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+        <button onClick={() => mudarAno(-1)} aria-label="Ano anterior" className="px-2 text-ink-soft" title="Ano anterior">
+          &laquo;
+        </button>
+        <button onClick={() => mudarMes(-1)} aria-label="Mes anterior" className="px-2 text-ink-soft" title="Mes anterior">
           &larr;
         </button>
-        <p className="font-medium">{NOMES_MESES[mes - 1]} {ano}</p>
-        <button onClick={() => mudarMes(1)} aria-label="Proximo mes" className="px-2 text-ink-soft">
+
+        <select
+          value={mes}
+          onChange={(e) => setMes(Number(e.target.value))}
+          aria-label="Selecionar mes"
+          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
+        >
+          {NOMES_MESES.map((nome, i) => (
+            <option key={nome} value={i + 1}>{nome}</option>
+          ))}
+        </select>
+
+        <select
+          value={ano}
+          onChange={(e) => setAno(Number(e.target.value))}
+          aria-label="Selecionar ano"
+          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
+        >
+          {anosDisponiveis.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+
+        <button onClick={() => mudarMes(1)} aria-label="Proximo mes" className="px-2 text-ink-soft" title="Proximo mes">
           &rarr;
         </button>
+        <button onClick={() => mudarAno(1)} aria-label="Proximo ano" className="px-2 text-ink-soft" title="Proximo ano">
+          &raquo;
+        </button>
       </div>
+
+      {!(mes === hoje.getMonth() + 1 && ano === hoje.getFullYear()) && (
+        <div className="flex justify-center mb-4">
+          <button onClick={irParaHoje} className="text-xs text-ledger underline">
+            Voltar para o mes atual
+          </button>
+        </div>
+      )}
 
       <div className="lg:grid lg:grid-cols-[1.1fr_1.3fr] lg:gap-4 lg:items-start mb-3">
         <div>

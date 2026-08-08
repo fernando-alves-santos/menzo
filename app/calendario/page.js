@@ -9,7 +9,12 @@ import {
   STATUS_LABEL,
   formatarMoeda,
   NOMES_MESES,
+  valorLinha,
 } from "../../lib/contas";
+
+// Mesmo intervalo do seletor rapido de ano do dashboard.
+const ANOS_PARA_TRAS = 6;
+const ANOS_PARA_FRENTE = 6;
 
 const STATUS_BG = {
   pago: "bg-stamp-green-bg text-stamp-green",
@@ -75,6 +80,24 @@ export default function Calendario() {
     setAno(novoAno);
   }
 
+  function mudarAno(delta) {
+    setAno(ano + delta);
+  }
+
+  function irParaHoje() {
+    setMes(hoje.getMonth() + 1);
+    setAno(hoje.getFullYear());
+  }
+
+  const anosDisponiveis = (() => {
+    const base = new Set();
+    for (let a = hoje.getFullYear() - ANOS_PARA_TRAS; a <= hoje.getFullYear() + ANOS_PARA_FRENTE; a++) {
+      base.add(a);
+    }
+    base.add(ano);
+    return Array.from(base).sort((a, b) => a - b);
+  })();
+
   const contasComStatus = contas.map((conta) => {
     const pagamento = pagamentos.find((p) => p.conta_id === conta.id);
     const status = calcularStatus(conta.dia_vencimento, mes, ano, pagamento);
@@ -109,15 +132,51 @@ export default function Calendario() {
         </Link>
       </header>
 
-      <div className="flex items-center justify-center gap-4 mb-4">
-        <button onClick={() => mudarMes(-1)} aria-label="Mes anterior" className="px-2 text-ink-soft">
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
+        <button onClick={() => mudarAno(-1)} aria-label="Ano anterior" className="px-2 text-ink-soft" title="Ano anterior">
+          &laquo;
+        </button>
+        <button onClick={() => mudarMes(-1)} aria-label="Mes anterior" className="px-2 text-ink-soft" title="Mes anterior">
           &larr;
         </button>
-        <p className="font-medium">{NOMES_MESES[mes - 1]} {ano}</p>
-        <button onClick={() => mudarMes(1)} aria-label="Proximo mes" className="px-2 text-ink-soft">
+
+        <select
+          value={mes}
+          onChange={(e) => setMes(Number(e.target.value))}
+          aria-label="Selecionar mes"
+          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
+        >
+          {NOMES_MESES.map((nome, i) => (
+            <option key={nome} value={i + 1}>{nome}</option>
+          ))}
+        </select>
+
+        <select
+          value={ano}
+          onChange={(e) => setAno(Number(e.target.value))}
+          aria-label="Selecionar ano"
+          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
+        >
+          {anosDisponiveis.map((a) => (
+            <option key={a} value={a}>{a}</option>
+          ))}
+        </select>
+
+        <button onClick={() => mudarMes(1)} aria-label="Proximo mes" className="px-2 text-ink-soft" title="Proximo mes">
           &rarr;
         </button>
+        <button onClick={() => mudarAno(1)} aria-label="Proximo ano" className="px-2 text-ink-soft" title="Proximo ano">
+          &raquo;
+        </button>
       </div>
+
+      {!(mes === hoje.getMonth() + 1 && ano === hoje.getFullYear()) && (
+        <div className="flex justify-center mb-4">
+          <button onClick={irParaHoje} className="text-xs text-ledger underline">
+            Voltar para hoje
+          </button>
+        </div>
+      )}
 
       {carregando ? (
         <p className="text-ink-soft text-sm text-center">Carregando...</p>
@@ -171,18 +230,25 @@ export default function Calendario() {
 
           {diaSelecionado && (
             <div className="mt-6 bg-surface border border-border rounded-lg p-4">
-              <p className="font-medium mb-3">Dia {diaSelecionado}</p>
-              <div className="flex flex-col gap-2">
-                {contasDoDiaSelecionado.map(({ conta, status }) => (
-                  <div key={conta.id} className="flex items-center justify-between text-sm">
-                    <span>{conta.nome}</span>
+              <p className="font-medium mb-1">Dia {diaSelecionado}</p>
+              <p className="text-[11px] text-ink-soft mb-3">
+                Clique numa conta pra abrir o painel neste mes/ano (dá pra marcar como pago, adiantar, etc).
+              </p>
+              <div className="flex flex-col gap-1">
+                {contasDoDiaSelecionado.map((linha) => (
+                  <Link
+                    key={linha.conta.id}
+                    href={`/dashboard?mes=${mes}&ano=${ano}`}
+                    className="flex items-center justify-between text-sm rounded-md px-2 py-2 -mx-2 hover:bg-surface-soft transition-colors"
+                  >
+                    <span>{linha.conta.nome}</span>
                     <span className="flex items-center gap-2">
-                      {formatarMoeda(conta.valor_esperado)}
-                      <span className={`stamp ${STATUS_BG[status]}`}>
-                        {STATUS_LABEL[status]}
+                      {formatarMoeda(valorLinha(linha))}
+                      <span className={`stamp ${STATUS_BG[linha.status]}`}>
+                        {STATUS_LABEL[linha.status]}
                       </span>
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
