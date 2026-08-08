@@ -126,7 +126,7 @@ export default function Calendario() {
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <header className="flex items-center justify-between mb-6">
-        <p className="font-display text-2xl">Calendario</p>
+        <p className="font-display text-2xl">Calendário</p>
         <Link href="/dashboard" className="text-sm text-ledger underline">
           Voltar ao painel
         </Link>
@@ -136,14 +136,14 @@ export default function Calendario() {
         <button onClick={() => mudarAno(-1)} aria-label="Ano anterior" className="px-2 text-ink-soft" title="Ano anterior">
           &laquo;
         </button>
-        <button onClick={() => mudarMes(-1)} aria-label="Mes anterior" className="px-2 text-ink-soft" title="Mes anterior">
+        <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="px-2 text-ink-soft" title="Mês anterior">
           &larr;
         </button>
 
         <select
           value={mes}
           onChange={(e) => setMes(Number(e.target.value))}
-          aria-label="Selecionar mes"
+          aria-label="Selecionar mês"
           className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
         >
           {NOMES_MESES.map((nome, i) => (
@@ -162,10 +162,10 @@ export default function Calendario() {
           ))}
         </select>
 
-        <button onClick={() => mudarMes(1)} aria-label="Proximo mes" className="px-2 text-ink-soft" title="Proximo mes">
+        <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="px-2 text-ink-soft" title="Próximo mês">
           &rarr;
         </button>
-        <button onClick={() => mudarAno(1)} aria-label="Proximo ano" className="px-2 text-ink-soft" title="Proximo ano">
+        <button onClick={() => mudarAno(1)} aria-label="Próximo ano" className="px-2 text-ink-soft" title="Próximo ano">
           &raquo;
         </button>
       </div>

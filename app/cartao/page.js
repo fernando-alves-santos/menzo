@@ -321,11 +321,11 @@ export default function FaturaCartao() {
       </p>
 
       <div className="flex items-center justify-center gap-4 mb-6">
-        <button onClick={() => mudarMes(-1)} aria-label="Mes anterior" className="px-2 text-ink-soft">
+        <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="px-2 text-ink-soft">
           &larr;
         </button>
         <p className="font-medium">{NOMES_MESES[mes - 1]} {ano}</p>
-        <button onClick={() => mudarMes(1)} aria-label="Proximo mes" className="px-2 text-ink-soft">
+        <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="px-2 text-ink-soft">
           &rarr;
         </button>
       </div>

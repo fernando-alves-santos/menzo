@@ -122,8 +122,8 @@ export default function NovaConta() {
           >
             <option value="">Selecione</option>
             <option value="conta_corrente">Conta corrente</option>
-            <option value="cartao_credito">Cartao de credito</option>
-            <option value="debito_automatico">Debito automatico</option>
+            <option value="cartao_credito">Cartão de crédito</option>
+            <option value="debito_automatico">Débito automático</option>
             <option value="boleto">Boleto</option>
           </select>
         </div>

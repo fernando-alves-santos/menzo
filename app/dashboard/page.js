@@ -111,8 +111,14 @@ function BarraComparativa({ itens }) {
 
 // Gráfico de rosca (donut) em SVG puro. Cada categoria da legenda é
 // clicável: ao clicar, expande a lista dos itens que compõem aquele total.
+// Categorias com participação abaixo de LIMITE_PEQUENA_PCT ficam agrupadas
+// numa linha "Outras categorias", que também é clicável e expande pra
+// mostrar cada uma delas (cada uma continuando clicável individualmente).
+const LIMITE_PEQUENA_PCT = 4;
+
 function GraficoCategorias({ dados }) {
   const [categoriaAberta, setCategoriaAberta] = useState(null);
+  const [outrasAbertas, setOutrasAbertas] = useState(false);
 
   // Reembolso entra como item negativo (pra fazer o total bater com o
   // Total do mês), mas uma fatia negativa não dá pra desenhar na rosca —
@@ -142,6 +148,50 @@ function GraficoCategorias({ dados }) {
       percentual: fracao * 100,
     };
   });
+
+  const fatiasPrincipais = fatias.filter((f) => f.percentual >= LIMITE_PEQUENA_PCT);
+  const fatiasPequenas = fatias.filter((f) => f.percentual < LIMITE_PEQUENA_PCT);
+  const totalPequenas = fatiasPequenas.reduce((soma, f) => soma + f.valor, 0);
+
+  function renderFatiaLinha(f, key) {
+    const aberta = categoriaAberta === f.categoria;
+    return (
+      <div key={key}>
+        <button
+          type="button"
+          onClick={() => setCategoriaAberta((c) => (c === f.categoria ? null : f.categoria))}
+          className="w-full flex items-center gap-2 min-w-0 py-1 hover:bg-surface-soft rounded px-1 -mx-1 text-left transition-colors"
+        >
+          <span
+            className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: f.cor }}
+          />
+          <span className="text-sm truncate flex-1">{f.categoria}</span>
+          <span className="text-xs text-ink-soft shrink-0">{f.percentual.toFixed(0)}%</span>
+          <span className="text-sm font-medium shrink-0 w-20 text-right">
+            {formatarMoeda(f.valor)}
+          </span>
+          <span className="text-ink-soft shrink-0">
+            <IconeChevron aberto={aberta} />
+          </span>
+        </button>
+
+        {aberta && (
+          <div className="ml-4 mb-2 border-l border-border pl-3 flex flex-col gap-1.5 py-1">
+            {f.itens.map((item, j) => (
+              <div key={j} className="flex items-center justify-between gap-2 text-xs">
+                <div className="min-w-0">
+                  <p className="text-ink break-words">{item.nome}</p>
+                  <p className="text-ink-soft">{item.subtitulo}</p>
+                </div>
+                <p className="text-ink-soft shrink-0">{formatarMoeda(item.valor)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col sm:flex-row items-start gap-6">
@@ -174,45 +224,37 @@ function GraficoCategorias({ dados }) {
       </svg>
 
       <div className="w-full flex flex-col gap-1 min-w-0">
-        {fatias.map((f, i) => {
-          const aberta = categoriaAberta === f.categoria;
-          return (
-            <div key={i}>
-              <button
-                type="button"
-                onClick={() => setCategoriaAberta((c) => (c === f.categoria ? null : f.categoria))}
-                className="w-full flex items-center gap-2 min-w-0 py-1 hover:bg-surface-soft rounded px-1 -mx-1 text-left transition-colors"
-              >
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: f.cor }}
-                />
-                <span className="text-sm truncate flex-1">{f.categoria}</span>
-                <span className="text-xs text-ink-soft shrink-0">{f.percentual.toFixed(0)}%</span>
-                <span className="text-sm font-medium shrink-0 w-20 text-right">
-                  {formatarMoeda(f.valor)}
-                </span>
-                <span className="text-ink-soft shrink-0">
-                  <IconeChevron aberto={aberta} />
-                </span>
-              </button>
+        {fatiasPrincipais.map((f, i) => renderFatiaLinha(f, i))}
 
-              {aberta && (
-                <div className="ml-4 mb-2 border-l border-border pl-3 flex flex-col gap-1.5 py-1">
-                  {f.itens.map((item, j) => (
-                    <div key={j} className="flex items-center justify-between gap-2 text-xs">
-                      <div className="min-w-0">
-                        <p className="text-ink break-words">{item.nome}</p>
-                        <p className="text-ink-soft">{item.subtitulo}</p>
-                      </div>
-                      <p className="text-ink-soft shrink-0">{formatarMoeda(item.valor)}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {fatiasPequenas.length > 0 && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setOutrasAbertas((a) => !a)}
+              className="w-full flex items-center gap-2 min-w-0 py-1 hover:bg-surface-soft rounded px-1 -mx-1 text-left transition-colors"
+            >
+              <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0 border border-dashed border-ink-soft" />
+              <span className="text-sm truncate flex-1 text-ink-soft">
+                Outras categorias ({fatiasPequenas.length})
+              </span>
+              <span className="text-xs text-ink-soft shrink-0">
+                {"<"}{LIMITE_PEQUENA_PCT}% cada
+              </span>
+              <span className="text-sm font-medium shrink-0 w-20 text-right text-ink-soft">
+                {formatarMoeda(totalPequenas)}
+              </span>
+              <span className="text-ink-soft shrink-0">
+                <IconeChevron aberto={outrasAbertas} />
+              </span>
+            </button>
+
+            {outrasAbertas && (
+              <div className="ml-4 border-l border-border pl-3 flex flex-col gap-1 py-1">
+                {fatiasPequenas.map((f, i) => renderFatiaLinha(f, `pequena-${i}`))}
+              </div>
+            )}
+          </div>
+        )}
 
         {negativos.map((d, i) => {
           const aberta = categoriaAberta === d.categoria;
@@ -1090,7 +1132,7 @@ function DashboardConteudo() {
               <input
                 type="text"
                 inputMode="decimal"
-                title="Valor a pagar (editavel, ex: com desconto de adiantamento)"
+                title="Valor a pagar (editável, ex: com desconto de adiantamento)"
                 value={
                   valoresEditados[conta.id] !== undefined
                     ? valoresEditados[conta.id]
@@ -1296,14 +1338,14 @@ function DashboardConteudo() {
         <button onClick={() => mudarAno(-1)} aria-label="Ano anterior" className="px-2 text-ink-soft" title="Ano anterior">
           &laquo;
         </button>
-        <button onClick={() => mudarMes(-1)} aria-label="Mes anterior" className="px-2 text-ink-soft" title="Mes anterior">
+        <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="px-2 text-ink-soft" title="Mês anterior">
           &larr;
         </button>
 
         <select
           value={mes}
           onChange={(e) => setMes(Number(e.target.value))}
-          aria-label="Selecionar mes"
+          aria-label="Selecionar mês"
           className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
         >
           {NOMES_MESES.map((nome, i) => (
@@ -1322,10 +1364,10 @@ function DashboardConteudo() {
           ))}
         </select>
 
-        <button onClick={() => mudarMes(1)} aria-label="Proximo mes" className="px-2 text-ink-soft" title="Proximo mes">
+        <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="px-2 text-ink-soft" title="Próximo mês">
           &rarr;
         </button>
-        <button onClick={() => mudarAno(1)} aria-label="Proximo ano" className="px-2 text-ink-soft" title="Proximo ano">
+        <button onClick={() => mudarAno(1)} aria-label="Próximo ano" className="px-2 text-ink-soft" title="Próximo ano">
           &raquo;
         </button>
       </div>
@@ -1341,22 +1383,30 @@ function DashboardConteudo() {
       <div className="lg:grid lg:grid-cols-[1.1fr_1.3fr] lg:gap-4 lg:items-start mb-3">
         <div>
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="bg-surface border border-border rounded-lg p-3">
-              <p className="text-xs text-ink-soft mb-1">Receita do mes</p>
-              <p className="font-display text-xl text-lime">{formatarMoeda(totalReceitas)}</p>
+            <div className="bg-surface border border-border rounded-lg p-3 min-w-0">
+              <p className="text-xs text-ink-soft mb-1">Receita do mês</p>
+              <p className="font-display text-lg sm:text-xl text-lime break-words leading-tight">
+                {formatarMoeda(totalReceitas)}
+              </p>
             </div>
-            <div className="bg-surface border border-border rounded-lg p-3">
+            <div className="bg-surface border border-border rounded-lg p-3 min-w-0">
               <p className="text-xs text-ink-soft mb-1">Saldo previsto</p>
-              <p className={`font-display text-xl ${saldoPrevisto >= 0 ? "text-ledger" : "text-stamp-red"}`}>
+              <p
+                className={`font-display text-lg sm:text-xl break-words leading-tight ${
+                  saldoPrevisto >= 0 ? "text-ledger" : "text-stamp-red"
+                }`}
+              >
                 {formatarMoeda(saldoPrevisto)}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
-            <div className="bg-surface border border-border rounded-lg p-3">
-              <p className="text-xs text-ink-soft mb-1">Total do mes</p>
-              <p className="font-display text-xl">{formatarMoeda(total)}</p>
+            <div className="bg-surface border border-border rounded-lg p-3 min-w-0">
+              <p className="text-xs text-ink-soft mb-1">Total do mês</p>
+              <p className="font-display text-lg sm:text-xl break-words leading-tight">
+                {formatarMoeda(total)}
+              </p>
             </div>
             <div className="bg-surface border border-border rounded-lg p-3">
               <p className="text-xs text-ink-soft mb-1">Pagas</p>
@@ -1378,7 +1428,7 @@ function DashboardConteudo() {
           <BarraComparativa
             itens={[
               { rotulo: "Receita", valor: totalReceitas, cor: "#BEE537" },
-              { rotulo: "Total do mes", valor: total, cor: "#EDEFEF" },
+              { rotulo: "Total do mês", valor: total, cor: "#EDEFEF" },
               { rotulo: "Saldo previsto", valor: saldoPrevisto, cor: saldoPrevisto >= 0 ? "#2FC9BC" : "#FF6B5D" },
             ]}
           />
@@ -1424,7 +1474,7 @@ function DashboardConteudo() {
                       inputMode="decimal"
                       value={formReceita.valor}
                       onChange={(e) => setFormReceita({ ...formReceita, valor: e.target.value })}
-                      placeholder="Lucro do mes no Veloxis"
+                      placeholder="Lucro do mês no Veloxis"
                       className="text-sm"
                     />
                     <div className="flex gap-3">
@@ -1444,9 +1494,7 @@ function DashboardConteudo() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{receitaTitular?.nome ?? "Receita Titular"}</p>
-                      <p className="text-xs text-ink-soft">
-                        Receita fixa · Titular · fecha no ultimo dia do mes
-                      </p>
+                      <p className="text-xs text-ink-soft">Receita fixa · Titular</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <p className="text-sm font-medium">{formatarMoeda(receitaTitular?.valor ?? 0)}</p>
@@ -1499,7 +1547,7 @@ function DashboardConteudo() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{receitaOutra?.nome ?? "Receita Outros"}</p>
-                      <p className="text-xs text-ink-soft">Receita fixa · Outra · recebida todo dia 05</p>
+                      <p className="text-xs text-ink-soft">Receita fixa · Outra</p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <p className="text-sm font-medium">{formatarMoeda(receitaOutra?.valor ?? 0)}</p>
@@ -1517,7 +1565,7 @@ function DashboardConteudo() {
               {/* Receitas variaveis */}
               <div className="px-4 py-3">
                 <div className="flex items-center justify-between gap-2 mb-2">
-                  <p className="text-sm font-medium">Receitas variaveis</p>
+                  <p className="text-sm font-medium">Receitas variáveis</p>
                   <p className="text-sm font-medium">
                     {formatarMoeda(receitasVariaveis.reduce((s, r) => s + Number(r.valor ?? 0), 0))}
                   </p>
@@ -1700,7 +1748,7 @@ function DashboardConteudo() {
                     type="text"
                     value={formReembolso.descricao}
                     onChange={(e) => setFormReembolso({ ...formReembolso, descricao: e.target.value })}
-                    placeholder="Descricao (ex: Almoço - amigo pagou no Pix)"
+                    placeholder="Descrição (ex: Almoço - amigo pagou no Pix)"
                     className="text-sm"
                   />
                   <div className="flex gap-2">
