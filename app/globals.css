@@ -79,6 +79,14 @@ input::placeholder {
   color: #5E6C6E;
 }
 
+/* A lista de opções do <select> é desenhada pelo navegador/SO, não pelo
+   nosso CSS normal — sem isso ela abre com fundo branco e texto claro,
+   ilegível em cima do tema escuro do app. */
+select option {
+  background-color: #12171A;
+  color: #EDEFEF;
+}
+
 input:focus,
 select:focus {
   outline: 2px solid #2FC9BC;

@@ -83,7 +83,7 @@ function IconeChevron({ aberto }) {
 // Barra comparativa simples (Receita x Total x Saldo) pro topo do
 // dashboard no notebook. Cada item vira uma barrinha proporcional ao
 // maior valor do grupo.
-function BarraComparativa({ itens }) {
+function BarraComparativa({ itens, formatar = formatarMoeda }) {
   const maiorValor = Math.max(...itens.map((i) => Math.abs(i.valor)), 1);
 
   return (
@@ -94,7 +94,7 @@ function BarraComparativa({ itens }) {
           <div key={item.rotulo}>
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-ink-soft">{item.rotulo}</span>
-              <span style={{ color: item.cor }}>{formatarMoeda(item.valor)}</span>
+              <span style={{ color: item.cor }}>{formatar(item.valor)}</span>
             </div>
             <div className="bg-surface-soft rounded h-2">
               <div
@@ -336,7 +336,30 @@ function DashboardConteudo() {
   const [erroApagar, setErroApagar] = useState(null);
   const [graficoAberto, setGraficoAberto] = useState(true);
   const [reembolsoAberto, setReembolsoAberto] = useState(false);
+  // Oculta os valores em R$ da tela (ex: pra usar em publico), como o
+  // "olhinho" de apps tipo Veloxis. Fica salvo no aparelho.
+  const [valoresOcultos, setValoresOcultos] = useState(false);
   const inputsRef = useRef({});
+
+  useEffect(() => {
+    const salvo = localStorage.getItem("menzo_valores_ocultos");
+    if (salvo === "1") setValoresOcultos(true);
+  }, []);
+
+  function alternarValoresOcultos() {
+    setValoresOcultos((atual) => {
+      const proximo = !atual;
+      localStorage.setItem("menzo_valores_ocultos", proximo ? "1" : "0");
+      return proximo;
+    });
+  }
+
+  // Envolve formatarMoeda: quando os valores estao ocultos, troca os
+  // digitos por bolinhas mas mantem o "R$" na frente.
+  function exibirValor(valor) {
+    if (!valoresOcultos) return formatarMoeda(valor);
+    return "R$ ••••••";
+  }
 
   // --- Receitas ---
   const [receitas, setReceitas] = useState([]);
@@ -1260,7 +1283,7 @@ function DashboardConteudo() {
           <div className="flex items-center justify-between gap-4 pl-8 sm:pl-0 sm:justify-end sm:gap-6">
             <div className="text-left sm:text-right">
               <p className="text-[11px] text-ink-soft">Total do bloco</p>
-              <p className="font-display text-base">{formatarMoeda(totalGrupo)}</p>
+              <p className="font-display text-base">{exibirValor(totalGrupo)}</p>
             </div>
             <div className="flex flex-wrap gap-1.5 justify-end">
               <span className="text-[11px] px-2 py-0.5 rounded bg-stamp-green-bg text-stamp-green whitespace-nowrap">
@@ -1292,9 +1315,30 @@ function DashboardConteudo() {
   return (
     <main className="max-w-3xl lg:max-w-6xl mx-auto px-4 py-6 sm:py-8">
       <header className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-display text-2xl">Minhas Contas</p>
-          {usuario && <p className="text-xs text-ink-soft">{usuario.email}</p>}
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="font-display text-2xl">Minhas Contas</p>
+            {usuario && <p className="text-xs text-ink-soft">{usuario.email}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={alternarValoresOcultos}
+            aria-label={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
+            title={valoresOcultos ? "Mostrar valores" : "Ocultar valores"}
+            className="text-ink-soft hover:text-ink transition-colors p-1 -ml-1"
+          >
+            {valoresOcultos ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.6 18.6 0 0 1 5.06-5.94M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2 sm:justify-end">
@@ -1302,7 +1346,7 @@ function DashboardConteudo() {
             href="/calendario"
             className="text-sm text-ledger px-3 py-2 font-medium text-center sm:text-left"
           >
-            Calendario
+            Calendário
           </Link>
           <Link
             href="/cartao"
@@ -1346,7 +1390,7 @@ function DashboardConteudo() {
           value={mes}
           onChange={(e) => setMes(Number(e.target.value))}
           aria-label="Selecionar mês"
-          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
+          className="font-display font-medium text-base bg-surface border border-border rounded-md px-3 py-1.5 min-w-[9.5rem] text-center"
         >
           {NOMES_MESES.map((nome, i) => (
             <option key={nome} value={i + 1}>{nome}</option>
@@ -1357,7 +1401,7 @@ function DashboardConteudo() {
           value={ano}
           onChange={(e) => setAno(Number(e.target.value))}
           aria-label="Selecionar ano"
-          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
+          className="font-display font-medium text-base bg-surface border border-border rounded-md px-3 py-1.5 min-w-[6rem] text-center"
         >
           {anosDisponiveis.map((a) => (
             <option key={a} value={a}>{a}</option>
@@ -1382,43 +1426,48 @@ function DashboardConteudo() {
 
       <div className="lg:grid lg:grid-cols-[1.1fr_1.3fr] lg:gap-4 lg:items-start mb-3">
         <div>
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className="bg-surface border border-border rounded-lg p-3 min-w-0">
-              <p className="text-xs text-ink-soft mb-1">Receita do mês</p>
-              <p className="font-display text-lg sm:text-xl text-lime break-words leading-tight">
-                {formatarMoeda(totalReceitas)}
-              </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3 min-w-0">
+              <div className="bg-surface border border-border rounded-lg p-2 min-w-0">
+                <p className="text-[11px] text-ink-soft mb-0.5">Receita do mês</p>
+                <p className="font-display text-sm sm:text-base text-lime break-words leading-tight">
+                  {exibirValor(totalReceitas)}
+                </p>
+              </div>
+              <div className="bg-surface border border-border rounded-lg p-2 min-w-0">
+                <p className="text-[11px] text-ink-soft mb-0.5">Total do mês</p>
+                <p className="font-display text-sm sm:text-base break-words leading-tight">
+                  {exibirValor(total)}
+                </p>
+              </div>
             </div>
-            <div className="bg-surface border border-border rounded-lg p-3 min-w-0">
-              <p className="text-xs text-ink-soft mb-1">Saldo previsto</p>
-              <p
-                className={`font-display text-lg sm:text-xl break-words leading-tight ${
-                  saldoPrevisto >= 0 ? "text-ledger" : "text-stamp-red"
-                }`}
-              >
-                {formatarMoeda(saldoPrevisto)}
-              </p>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
-            <div className="bg-surface border border-border rounded-lg p-3 min-w-0">
-              <p className="text-xs text-ink-soft mb-1">Total do mês</p>
-              <p className="font-display text-lg sm:text-xl break-words leading-tight">
-                {formatarMoeda(total)}
-              </p>
-            </div>
-            <div className="bg-surface border border-border rounded-lg p-3">
-              <p className="text-xs text-ink-soft mb-1">Pagas</p>
-              <p className="font-display text-xl text-stamp-green">{contagem.pago}</p>
-            </div>
-            <div className="bg-surface border border-border rounded-lg p-3">
-              <p className="text-xs text-ink-soft mb-1">No prazo</p>
-              <p className="font-display text-xl text-stamp-amber">{contagem.no_prazo}</p>
-            </div>
-            <div className="bg-surface border border-border rounded-lg p-3">
-              <p className="text-xs text-ink-soft mb-1">Vencidas</p>
-              <p className="font-display text-xl text-stamp-red">{contagem.vencido}</p>
+            <div className="flex flex-col gap-3 min-w-0">
+              <div className="bg-surface border border-border rounded-lg p-3 min-w-0">
+                <p className="text-xs text-ink-soft mb-1">Saldo previsto</p>
+                <p
+                  className={`font-display text-lg sm:text-xl break-words leading-tight ${
+                    saldoPrevisto >= 0 ? "text-ledger" : "text-stamp-red"
+                  }`}
+                >
+                  {exibirValor(saldoPrevisto)}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-surface border border-border rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-ink-soft mb-0.5">Pagas</p>
+                  <p className="font-display text-lg text-stamp-green">{contagem.pago}</p>
+                </div>
+                <div className="bg-surface border border-border rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-ink-soft mb-0.5">No prazo</p>
+                  <p className="font-display text-lg text-stamp-amber">{contagem.no_prazo}</p>
+                </div>
+                <div className="bg-surface border border-border rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-ink-soft mb-0.5">Vencidas</p>
+                  <p className="font-display text-lg text-stamp-red">{contagem.vencido}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1426,6 +1475,7 @@ function DashboardConteudo() {
         <div className="hidden lg:block bg-surface border border-border rounded-lg p-4">
           <p className="text-xs text-ink-soft mb-3">Receita x Total x Saldo</p>
           <BarraComparativa
+            formatar={exibirValor}
             itens={[
               { rotulo: "Receita", valor: totalReceitas, cor: "#BEE537" },
               { rotulo: "Total do mês", valor: total, cor: "#EDEFEF" },
@@ -1453,7 +1503,7 @@ function DashboardConteudo() {
               </span>
               <p className="font-display text-lg leading-tight">Receitas</p>
             </div>
-            <p className="text-sm font-medium text-lime">{formatarMoeda(totalReceitas)}</p>
+            <p className="text-sm font-medium text-lime">{exibirValor(totalReceitas)}</p>
           </button>
 
           {receitasAberto && (
@@ -1689,7 +1739,7 @@ function DashboardConteudo() {
                 <p className="text-[11px] text-ink-soft">Não entra no total de gastos acima</p>
               </div>
             </div>
-            <p className="text-sm font-medium">{formatarMoeda(totalReembolsos)}</p>
+            <p className="text-sm font-medium">{exibirValor(totalReembolsos)}</p>
           </button>
 
           {reembolsoAberto && (
