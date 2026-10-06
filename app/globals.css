@@ -106,3 +106,13 @@ button {
 ::placeholder {
   text-transform: uppercase !important;
 }
+
+/* Tela de login: texto normal (e-mail e senha aparecem exatamente como
+   digitados). As maiúsculas valem só dentro do app, depois do acesso. */
+.sem-maiusculas,
+.sem-maiusculas *,
+.sem-maiusculas *::before,
+.sem-maiusculas *::after,
+.sem-maiusculas ::placeholder {
+  text-transform: none !important;
+}
