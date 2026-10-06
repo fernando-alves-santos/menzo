@@ -96,3 +96,16 @@ select:focus {
 button {
   font-family: var(--font-body);
 }
+
+/* TODO o texto do app aparece em MAIÚSCULAS (inclui o que é digitado nos
+   campos e os placeholders). */
+html,
+body,
+input,
+select,
+textarea,
+button,
+option,
+::placeholder {
+  text-transform: uppercase;
+}

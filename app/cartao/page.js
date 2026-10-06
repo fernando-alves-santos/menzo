@@ -10,6 +10,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import SeletorMesAno from "../../components/SeletorMesAno";
 import { supabase } from "../../lib/supabaseClient";
 import { calcularStatus, STATUS_LABEL, STATUS_CLASSES, formatarMoeda, NOMES_MESES, CATEGORIAS } from "../../lib/contas";
 
@@ -320,15 +321,11 @@ export default function FaturaCartao() {
         Mensalidades fixas + gastos avulsos, somados por cartão
       </p>
 
-      <div className="flex items-center justify-center gap-4 mb-6">
-        <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="px-2 text-ink-soft">
-          &larr;
-        </button>
-        <p className="font-medium">{NOMES_MESES[mes - 1]} {ano}</p>
-        <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="px-2 text-ink-soft">
-          &rarr;
-        </button>
-      </div>
+      <SeletorMesAno
+        mes={mes}
+        ano={ano}
+        onMudar={(m, a) => { setMes(m); setAno(a); setEditandoId(null); }}
+      />
 
       {carregando && <p className="text-ink-soft text-sm">Carregando...</p>}
 

@@ -31,7 +31,7 @@ export default function NovaConta() {
       : null;
 
     const { error } = await supabase.from("contas").insert({
-      nome: form.nome,
+      nome: form.nome.trim().toUpperCase(),
       categoria: form.categoria,
       dia_vencimento: Number(form.dia_vencimento),
       valor_esperado: valorNumerico,

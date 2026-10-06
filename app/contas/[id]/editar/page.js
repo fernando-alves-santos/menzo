@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "../../../../lib/supabaseClient";
 import { CATEGORIAS } from "../../../../lib/contas";
 
-export default function EditarConta() {
+function EditarContaConteudo() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const mesUrl = Number(searchParams.get("mes"));
+  const anoUrl = Number(searchParams.get("ano"));
   const contaId = params.id;
 
   const [form, setForm] = useState({
@@ -65,7 +68,7 @@ export default function EditarConta() {
     const { error } = await supabase
       .from("contas")
       .update({
-        nome: form.nome,
+        nome: form.nome.trim().toUpperCase(),
         categoria: form.categoria,
         dia_vencimento: Number(form.dia_vencimento),
         valor_esperado: valorNumerico,
@@ -79,7 +82,26 @@ export default function EditarConta() {
       return;
     }
 
-    router.push("/dashboard");
+    // O dashboard mostra "valor_pago" quando o mês já está pago, e só usa
+    // "valor_esperado" quando ainda não foi pago. Por isso, ao editar o
+    // valor, também atualizamos o pagamento do mês que estava aberto.
+    if (mesUrl >= 1 && mesUrl <= 12 && anoUrl >= 2000 && valorNumerico != null) {
+      const { error: erroPagamento } = await supabase
+        .from("pagamentos")
+        .update({ valor_pago: valorNumerico })
+        .eq("conta_id", contaId)
+        .eq("mes", mesUrl)
+        .eq("ano", anoUrl)
+        .eq("status", "pago");
+
+      if (erroPagamento) {
+        setErro("A conta foi salva, mas não foi possível atualizar o valor pago deste mês.");
+        setSalvando(false);
+        return;
+      }
+    }
+
+    router.push(mesUrl && anoUrl ? `/dashboard?mes=${mesUrl}&ano=${anoUrl}` : "/dashboard");
   }
 
   if (carregando) {
@@ -210,5 +232,13 @@ export default function EditarConta() {
         </div>
       </form>
     </main>
+  );
+}
+
+export default function EditarConta() {
+  return (
+    <Suspense fallback={null}>
+      <EditarContaConteudo />
+    </Suspense>
   );
 }

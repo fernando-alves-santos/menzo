@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import SeletorMesAno from "../../components/SeletorMesAno";
 import { supabase } from "../../lib/supabaseClient";
 import {
   calcularStatus,
@@ -132,51 +133,11 @@ export default function Calendario() {
         </Link>
       </header>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-        <button onClick={() => mudarAno(-1)} aria-label="Ano anterior" className="px-2 text-ink-soft" title="Ano anterior">
-          &laquo;
-        </button>
-        <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="px-2 text-ink-soft" title="Mês anterior">
-          &larr;
-        </button>
-
-        <select
-          value={mes}
-          onChange={(e) => setMes(Number(e.target.value))}
-          aria-label="Selecionar mês"
-          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
-        >
-          {NOMES_MESES.map((nome, i) => (
-            <option key={nome} value={i + 1}>{nome}</option>
-          ))}
-        </select>
-
-        <select
-          value={ano}
-          onChange={(e) => setAno(Number(e.target.value))}
-          aria-label="Selecionar ano"
-          className="font-medium bg-transparent border border-border rounded-md px-2 py-1"
-        >
-          {anosDisponiveis.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
-
-        <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="px-2 text-ink-soft" title="Próximo mês">
-          &rarr;
-        </button>
-        <button onClick={() => mudarAno(1)} aria-label="Próximo ano" className="px-2 text-ink-soft" title="Próximo ano">
-          &raquo;
-        </button>
-      </div>
-
-      {!(mes === hoje.getMonth() + 1 && ano === hoje.getFullYear()) && (
-        <div className="flex justify-center mb-4">
-          <button onClick={irParaHoje} className="text-xs text-ledger underline">
-            Voltar para hoje
-          </button>
-        </div>
-      )}
+      <SeletorMesAno
+        mes={mes}
+        ano={ano}
+        onMudar={(m, a) => { setMes(m); setAno(a); }}
+      />
 
       {carregando ? (
         <p className="text-ink-soft text-sm text-center">Carregando...</p>

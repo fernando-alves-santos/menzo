@@ -13,6 +13,7 @@ import {
   slugify,
   valorLinha,
 } from "../../lib/contas";
+import SeletorMesAno from "../../components/SeletorMesAno";
 
 // Quantos anos pra tras/pra frente aparecem no seletor rapido de ano do
 // dashboard (alem do ano atual). Ajuste aqui se precisar de um intervalo
@@ -1233,7 +1234,7 @@ function DashboardConteudo() {
           </Link>
 
           <Link
-            href={`/contas/${conta.id}/editar`}
+            href={`/contas/${conta.id}/editar?mes=${mes}&ano=${ano}`}
             className="text-xs text-ledger underline"
           >
             Editar
@@ -1378,51 +1379,11 @@ function DashboardConteudo() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 mb-2">
-        <button onClick={() => mudarAno(-1)} aria-label="Ano anterior" className="px-2 text-ink-soft" title="Ano anterior">
-          &laquo;
-        </button>
-        <button onClick={() => mudarMes(-1)} aria-label="Mês anterior" className="px-2 text-ink-soft" title="Mês anterior">
-          &larr;
-        </button>
-
-        <select
-          value={mes}
-          onChange={(e) => setMes(Number(e.target.value))}
-          aria-label="Selecionar mês"
-          className="font-display font-medium text-base bg-surface border border-border rounded-md px-3 py-1.5 min-w-[9.5rem] text-center"
-        >
-          {NOMES_MESES.map((nome, i) => (
-            <option key={nome} value={i + 1}>{nome}</option>
-          ))}
-        </select>
-
-        <select
-          value={ano}
-          onChange={(e) => setAno(Number(e.target.value))}
-          aria-label="Selecionar ano"
-          className="font-display font-medium text-base bg-surface border border-border rounded-md px-3 py-1.5 min-w-[6rem] text-center"
-        >
-          {anosDisponiveis.map((a) => (
-            <option key={a} value={a}>{a}</option>
-          ))}
-        </select>
-
-        <button onClick={() => mudarMes(1)} aria-label="Próximo mês" className="px-2 text-ink-soft" title="Próximo mês">
-          &rarr;
-        </button>
-        <button onClick={() => mudarAno(1)} aria-label="Próximo ano" className="px-2 text-ink-soft" title="Próximo ano">
-          &raquo;
-        </button>
-      </div>
-
-      {!(mes === hoje.getMonth() + 1 && ano === hoje.getFullYear()) && (
-        <div className="flex justify-center mb-4">
-          <button onClick={irParaHoje} className="text-xs text-ledger underline">
-            Voltar para o mes atual
-          </button>
-        </div>
-      )}
+      <SeletorMesAno
+        mes={mes}
+        ano={ano}
+        onMudar={(m, a) => { setMes(m); setAno(a); }}
+      />
 
       <div className="lg:grid lg:grid-cols-[1.1fr_1.3fr] lg:gap-4 lg:items-start mb-3">
         <div>
