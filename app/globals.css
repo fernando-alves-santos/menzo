@@ -98,14 +98,11 @@ button {
 }
 
 /* TODO o texto do app aparece em MAIÚSCULAS (inclui o que é digitado nos
-   campos e os placeholders). */
-html,
-body,
-input,
-select,
-textarea,
-button,
-option,
+   campos, placeholders, botões, listas e textos de gráficos). O !important
+   garante que nada do Tailwind (ex: normal-case) desfaça isso. */
+*,
+*::before,
+*::after,
 ::placeholder {
-  text-transform: uppercase;
+  text-transform: uppercase !important;
 }

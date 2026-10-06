@@ -332,6 +332,7 @@ function DashboardConteudo() {
   const [cartoesPorId, setCartoesPorId] = useState({});
   const [usuario, setUsuario] = useState(null);
   const [enviandoId, setEnviandoId] = useState(null);
+  const [menuComprovanteId, setMenuComprovanteId] = useState(null);
   const [apagandoId, setApagandoId] = useState(null);
   const [erroUpload, setErroUpload] = useState(null);
   const [erroApagar, setErroApagar] = useState(null);
@@ -603,6 +604,36 @@ function DashboardConteudo() {
     }
 
     setEnviandoId(null);
+    carregarDados();
+  }
+
+  async function excluirComprovante(conta, pagamento) {
+    if (!pagamento?.comprovante_url) return;
+    const ok = window.confirm(
+      "EXCLUIR O COMPROVANTE DE " + conta.nome + "? ESSA AÇÃO NÃO PODE SER DESFEITA."
+    );
+    if (!ok) return;
+
+    setErroUpload(null);
+    setEnviandoId(conta.id);
+
+    const { error: erroStorage } = await supabase.storage
+      .from("comprovantes")
+      .remove([pagamento.comprovante_url]);
+
+    if (erroStorage) {
+      setErroUpload("NÃO FOI POSSÍVEL EXCLUIR O COMPROVANTE. TENTE NOVAMENTE.");
+      setEnviandoId(null);
+      return;
+    }
+
+    await supabase
+      .from("pagamentos")
+      .update({ comprovante_url: null })
+      .eq("id", pagamento.id);
+
+    setEnviandoId(null);
+    setMenuComprovanteId(null);
     carregarDados();
   }
 
@@ -1205,26 +1236,66 @@ function DashboardConteudo() {
             }}
           />
 
-          {pagamento?.comprovante_url ? (
+          <div className="relative">
             <button
-              onClick={() => abrirComprovante(pagamento.comprovante_url)}
-              className="text-xs text-ink-soft underline"
+              type="button"
+              onClick={() =>
+                setMenuComprovanteId(menuComprovanteId === conta.id ? null : conta.id)
+              }
+              disabled={enviandoId === conta.id}
+              aria-expanded={menuComprovanteId === conta.id}
+              className="text-xs px-2.5 py-1 rounded-md border border-ledger text-ledger disabled:opacity-60"
             >
-              Ver comprovante
+              {enviandoId === conta.id ? "AGUARDE..." : "COMPROVANTE ▾"}
             </button>
-          ) : null}
 
-          <button
-            onClick={() => inputsRef.current[conta.id]?.click()}
-            disabled={enviandoId === conta.id}
-            className="text-xs text-ledger underline disabled:opacity-60"
-          >
-            {enviandoId === conta.id
-              ? "Enviando..."
-              : pagamento?.comprovante_url
-              ? "Trocar comprovante"
-              : "Anexar comprovante"}
-          </button>
+            {menuComprovanteId === conta.id && enviandoId !== conta.id && (
+              <div className="absolute right-0 z-20 mt-1 w-56 bg-surface border border-border rounded-md shadow-lg overflow-hidden divide-y divide-border">
+                {pagamento?.comprovante_url ? (
+                  <>
+                    <button
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-soft"
+                      onClick={() => {
+                        setMenuComprovanteId(null);
+                        abrirComprovante(pagamento.comprovante_url);
+                      }}
+                    >
+                      VER COMPROVANTE
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-soft"
+                      onClick={() => {
+                        setMenuComprovanteId(null);
+                        inputsRef.current[conta.id]?.click();
+                      }}
+                    >
+                      TROCAR COMPROVANTE
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full text-left px-4 py-2.5 text-sm text-stamp-red hover:bg-surface-soft"
+                      onClick={() => excluirComprovante(conta, pagamento)}
+                    >
+                      EXCLUIR COMPROVANTE
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-soft"
+                    onClick={() => {
+                      setMenuComprovanteId(null);
+                      inputsRef.current[conta.id]?.click();
+                    }}
+                  >
+                    ANEXAR COMPROVANTE
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           <Link
             href={`/contas/${conta.id}/comprovantes`}

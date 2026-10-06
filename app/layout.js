@@ -1,7 +1,8 @@
 import "./globals.css";
+import MaiusculasGlobais from "../components/MaiusculasGlobais";
 
 export const metadata = {
-  title: "Menzo — Suas finanças, seu futuro.",
+  title: "MENZO — SUAS FINANÇAS, SEU FUTURO.",
   description: "Controle de contas, vencimentos e comprovantes",
   icons: {
     icon: "/favicon-32.png",
@@ -21,6 +22,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="bg-paper text-ink font-body min-h-screen">
+        <MaiusculasGlobais />
         {children}
       </body>
     </html>
