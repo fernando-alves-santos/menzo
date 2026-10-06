@@ -32,6 +32,9 @@ const FORMA_PAGAMENTO_LABEL = {
   debito: "Débito automático",
   pix: "Pix",
   dinheiro: "Dinheiro",
+  conta_corrente: "Conta corrente",
+  debito_automatico: "Débito automático",
+  boleto: "Boleto",
 };
 
 const PALETA_CATEGORIAS = [
@@ -1117,7 +1120,10 @@ function DashboardConteudo() {
     const responsavelCalculado = conta.rotativo
       ? calcularResponsavelRotativo(conta, mes, ano)
       : null;
-    const responsavel = pagamento?.responsavel || responsavelCalculado;
+    // "Vez de" só vale para contas rotativas (conta fixa não tem rodízio).
+    const responsavel = conta.rotativo
+      ? pagamento?.responsavel || responsavelCalculado
+      : null;
     const parcelasPagasConta =
       (conta.parcelas_pagas_manual ?? 0) + (parcelasPagas[conta.id] ?? 0);
     const quitado = conta.parcela_total && parcelasPagasConta >= conta.parcela_total;
