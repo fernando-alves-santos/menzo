@@ -29,6 +29,7 @@ nuvem (Supabase).
 - **Contas fixas, variáveis e rotativas** (contas divididas entre mais de
   uma pessoa, alternando quem paga a cada mês).
 - **Calendário visual** de vencimentos.
+- **Ícone de "ocultar valores" no dashboard** pra esconder os valores em R$ da tela (ex: quando for usar em público).
 - **Upload de comprovantes** por conta.
 - **Lançamento por foto ou voz com IA**: tira uma foto de um comprovante
   ou fala o gasto em voz alta, e o app preenche descrição, valor, data,
